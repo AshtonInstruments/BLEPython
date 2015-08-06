@@ -12,7 +12,7 @@
 
 from utils import uuid2str, bytearray2str
 import logging
-from Queue import Queue
+from Queue import Queue, Empty
 logger = logging.getLogger('BLEPython')
 
 class Characteristic(object):
@@ -34,7 +34,12 @@ class Characteristic(object):
     def read(self):
         logger.debug('Reading handle %d', self.handle)
         self.cmd_q.put(self.bglib.ble_cmd_attclient_read_by_handle(self.connection_handle, self.handle))
-        data = self.rx_q.get(True)
+
+        try:
+            data = self.rx_q.get(True, 3)
+        except Empty as e:
+            raise e
+
         return data
 
     def write(self, data):
@@ -61,6 +66,10 @@ class Service(object):
         self.start = start
         self.end = end
         self.characteristics = []
+
+    def __del__(self):
+        for c in self.characteristics:
+            del c
 
     def __str__(self):
         return '%s -- %s' % (self.name, uuid2str(self.short_uuid))

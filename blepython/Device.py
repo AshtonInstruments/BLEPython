@@ -99,7 +99,10 @@ class Device(object):
 
     def remove_service(self, uuid):
         logger.debug('Removing service %s', uuid2str(uuid))
-        self.services.remove(self.find_service(uuid))
+        s = self.find_service(uuid)
+        if s:
+            self.services.remove(s)
+            del s
 
     def find_service(self, uuid):
         for s in self.services:
@@ -115,7 +118,7 @@ class Device(object):
 
     def connection_status_handler(self, args):
         logger.debug('Connected to %s', self)
-        if not self.connected:
+        if not self.connected and not self.connection_handle:
             self.connection_handle = args['connection']
 
             # Start primary service discovery
@@ -125,6 +128,10 @@ class Device(object):
     def connection_disconnected_handler(self, args):
         logger.debug('Disconnected from %s', self)
         self.connected = False
+        self.connection_handle = None
+
+        for s in self.services:
+            self.remove_service(s.uuid)
 
     def procedure_complete_handler(self, args):
         if self.current_procedure == Device.FINDING_PRIMARY_SERVICES:
