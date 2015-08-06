@@ -112,7 +112,11 @@ class BGAPIEventHandler(object):
         e.fire(earg).
         """
 
-        #print inspect.stack()[1][4][0].rstrip()
+        debug_output = inspect.stack()[1][4][0].rstrip().lstrip()
+        if 'ble_' in debug_output:
+            #print debug_output
+            pass
+
         for func in self._getfunctionlist():
             func(self.obj, earg)
 

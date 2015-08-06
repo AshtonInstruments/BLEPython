@@ -30,9 +30,18 @@ class Characteristic(object):
         self.name = 'Unknown'
         self.connection_handle = connection_handle
         self.rx_q = Queue()
+        self.notification_callback = None
+
+    def is_data_available(self):
+        return not self.rx_q.empty()
+
+    def get_rx_data(self):
+        if self.is_data_available():
+            return self.rx_q.get()
+        return None
 
     def read(self):
-        logger.debug('Reading handle %d', self.handle)
+        logger.debug('Reading handle %d (%s)', self.handle, uuid2str(self.short_uuid))
         self.cmd_q.put(self.bglib.ble_cmd_attclient_read_by_handle(self.connection_handle, self.handle))
 
         try:
@@ -43,12 +52,21 @@ class Characteristic(object):
         return data
 
     def write(self, data):
-        logger.debug('Writing handle %d', self.handle)
+        logger.debug('Writing handle %d (%s)', self.handle, uuid2str(self.short_uuid))
         self.cmd_q.put(self.bglib.ble_cmd_attclient_attribute_write(self.connection_handle, self.handle, data))
 
     def attclient_attribute_value_handler(self, args):
-        logger.debug('Placing data onto RX Queue for handle %d', self.handle)
-        self.rx_q.put(args['value'])
+        if args['type'] == 0x01:
+            if self.notification_callback:
+                # This is a notification event
+                logger.debug('Calling notification callback for handle %d (%s)', self.handle, uuid2str(self.short_uuid))
+                self.notification_callback(self.short_uuid, args['value'])
+            else:
+                logger.warn('No notification callback for handle %d (%s)', self.handle, uuid2str(self.short_uuid))
+        elif args['type'] == 0x00:
+            # This is read data
+            logger.debug('Placing data onto RX Queue for handle %d (%s)', self.handle, uuid2str(self.short_uuid))
+            self.rx_q.put(args['value'])
 
 class Service(object):
     def __init__(self, bglib, connection_handle, cmd_q, uuid, start, end):
