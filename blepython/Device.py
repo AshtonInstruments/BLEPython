@@ -66,7 +66,7 @@ class Device(object):
 
     def add_service(self, uuid, start, end):
         if not self.find_service(uuid):
-            logger.debug('Adding service UUID: %s', uuid2str(uuid))
+            logger.debug('Adding service UUID: %s (%d:%d)', uuid2str(uuid), start, end)
 
             # Check if the service has a specific class implemented
             if len(uuid) == 2:
@@ -101,8 +101,8 @@ class Device(object):
         logger.debug('Removing service %s', uuid2str(uuid))
         s = self.find_service(uuid)
         if s:
+            s.disconnect_handler()
             self.services.remove(s)
-            del s
 
     def find_service(self, uuid):
         for s in self.services:
@@ -130,7 +130,7 @@ class Device(object):
         self.connected = False
         self.connection_handle = None
 
-        for s in self.services:
+        for s in self.services[:]:
             self.remove_service(s.uuid)
 
     def procedure_complete_handler(self, args):

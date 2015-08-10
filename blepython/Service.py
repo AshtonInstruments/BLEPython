@@ -85,9 +85,10 @@ class Service(object):
         self.end = end
         self.characteristics = []
 
-    def __del__(self):
-        for c in self.characteristics:
-            del c
+    def disconnect_handler(self):
+        for c in self.characteristics[:]:
+            logger.debug('Removing Characteristic UUID: %s Handle: %d', uuid2str(c.uuid), c.handle)
+            self.characteristics.remove(c)
 
     def __str__(self):
         return '%s -- %s' % (self.name, uuid2str(self.short_uuid))
