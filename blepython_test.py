@@ -3,7 +3,6 @@
 
 import sys
 import blepython
-import time
 
 import logging
 logging.getLogger('BLEPython').setLevel(logging.WARN)
@@ -23,13 +22,19 @@ adapter.reset()
 adapter.do_scan(2)
 
 print adapter.devices
+connected_devices = []
 
 for x in adapter.devices:
-    print x
-
+    # Register the custom DFU service (uuid = 0x1530)
     x.register_custom_service_type([0x30, 0x15], DFUService)
 
-    x.connect()
+    # Attempt to connect to any device found
+    try:
+        print 'Connecting to %s' % x.address
+        x.connect(timeout=10)
+    except blepython.ConnectTimeout:
+        print 'Connection to %s timed out!' % x.address
+        continue
 
     print 'Discovered Services:'
     for s in x.services:
@@ -58,4 +63,16 @@ for x in adapter.devices:
     if dfus:
         print dfus
 
+    connected_devices.append(x)
+
+# Demo using multiple connection handles for simultaneous connections to multiple peripherals
+for x in connected_devices:
+    gas = x.find_service_by_name('GenericAccessService')
+    print 'Connected to %s (%d)!' % (gas.get_device_name(), x.connection_handle)
+
+
+# Disconnect cleanly from any peripherals
+for x in connected_devices:
+    gas = x.find_service_by_name('GenericAccessService')
+    print 'Disconnecting from %s' % gas.get_device_name()
     x.disconnect()

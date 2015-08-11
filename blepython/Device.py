@@ -10,11 +10,13 @@
 # @copyright Copyright &copy 2015 Ashton Instruments
 ################################################################################
 
-from utils import address2str, uuid2str
+from utils import address2str, uuid2str, ConnectTimeout
 import logging
 from Service import Service, BatteryService,\
     DeviceInformationService, GenericAccessService,\
     GenericAttributeService
+from datetime import datetime, timedelta
+import time
 
 logger = logging.getLogger('BLEPython')
 
@@ -43,7 +45,7 @@ class Device(object):
     def __str__(self):
         return '%s (%s)' % (self.address, self.name)
 
-    def connect(self):
+    def connect(self, timeout=10):
         logger.debug('Connecting to %s', self)
         self.cmd_q.put(self.bglib.ble_cmd_gap_connect_direct(
             self.addr,
@@ -52,8 +54,13 @@ class Device(object):
             12,
             100,
             0))
+
+        start_time = datetime.now()
         while not self.connected:
-            pass
+            if datetime.now() > start_time + timedelta(seconds=timeout):
+                raise ConnectTimeout
+            else:
+                time.sleep(0.1)
 
     def disconnect(self):
         logger.debug('Disconnecting from %s', self)

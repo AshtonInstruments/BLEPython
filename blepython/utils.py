@@ -10,6 +10,9 @@
 # @copyright Copyright &copy 2015 Ashton Instruments
 ################################################################################
 
+class ConnectTimeout(Exception):
+    pass
+
 def address2str(address):
     return "%s" % ''.join(['%02X' % b for b in address[::-1]])
 
