@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 import time
 from Device import Device
 from utils import address2str, uuid2str
-from Queue import Queue
+from Queue import Queue, Empty
 from threading import Thread
 
 class Adapter(object):
@@ -30,6 +30,7 @@ class Adapter(object):
 
         self.devices = []
         self.cmd_q = Queue()
+        self.cmd_rsp_q = Queue()
 
         # Open a serial port to the adapter
         self.serial = serial.Serial(port=port, baudrate=115200, timeout=1)
@@ -50,9 +51,101 @@ class Adapter(object):
         self.bglib.ble_evt_attclient_group_found += self.attclient_group_found_handler
         self.bglib.ble_evt_attclient_attribute_value += self.attclient_attribute_value_handler
 
-        self.listener_thread = Thread(target=self._listener_thread)
+        # Install Response handlers
+        self.bglib.ble_rsp_system_reset += self.cmd_rsp_handler
+        self.bglib.ble_rsp_system_hello += self.cmd_rsp_handler
+        self.bglib.ble_rsp_system_address_get += self.cmd_rsp_handler
+        self.bglib.ble_rsp_system_reg_write += self.cmd_rsp_handler
+        self.bglib.ble_rsp_system_reg_read += self.cmd_rsp_handler
+        self.bglib.ble_rsp_system_get_counters += self.cmd_rsp_handler
+        self.bglib.ble_rsp_system_get_connections += self.cmd_rsp_handler
+        self.bglib.ble_rsp_system_read_memory += self.cmd_rsp_handler
+        self.bglib.ble_rsp_system_get_info += self.cmd_rsp_handler
+        self.bglib.ble_rsp_system_endpoint_tx += self.cmd_rsp_handler
+        self.bglib.ble_rsp_system_whitelist_append += self.cmd_rsp_handler
+        self.bglib.ble_rsp_system_whitelist_remove += self.cmd_rsp_handler
+        self.bglib.ble_rsp_system_whitelist_clear += self.cmd_rsp_handler
+        self.bglib.ble_rsp_system_endpoint_rx += self.cmd_rsp_handler
+        self.bglib.ble_rsp_system_endpoint_set_watermarks += self.cmd_rsp_handler
+        self.bglib.ble_rsp_flash_ps_defrag += self.cmd_rsp_handler
+        self.bglib.ble_rsp_flash_ps_dump += self.cmd_rsp_handler
+        self.bglib.ble_rsp_flash_ps_erase_all += self.cmd_rsp_handler
+        self.bglib.ble_rsp_flash_ps_save += self.cmd_rsp_handler
+        self.bglib.ble_rsp_flash_ps_load += self.cmd_rsp_handler
+        self.bglib.ble_rsp_flash_ps_erase += self.cmd_rsp_handler
+        self.bglib.ble_rsp_flash_erase_page += self.cmd_rsp_handler
+        self.bglib.ble_rsp_flash_write_words += self.cmd_rsp_handler
+        self.bglib.ble_rsp_attributes_write += self.cmd_rsp_handler
+        self.bglib.ble_rsp_attributes_read += self.cmd_rsp_handler
+        self.bglib.ble_rsp_attributes_read_type += self.cmd_rsp_handler
+        self.bglib.ble_rsp_attributes_user_read_response += self.cmd_rsp_handler
+        self.bglib.ble_rsp_attributes_user_write_response += self.cmd_rsp_handler
+        self.bglib.ble_rsp_connection_disconnect += self.cmd_rsp_handler
+        self.bglib.ble_rsp_connection_get_rssi += self.cmd_rsp_handler
+        self.bglib.ble_rsp_connection_update += self.cmd_rsp_handler
+        self.bglib.ble_rsp_connection_version_update += self.cmd_rsp_handler
+        self.bglib.ble_rsp_connection_channel_map_get += self.cmd_rsp_handler
+        self.bglib.ble_rsp_connection_channel_map_set += self.cmd_rsp_handler
+        self.bglib.ble_rsp_connection_features_get += self.cmd_rsp_handler
+        self.bglib.ble_rsp_connection_get_status += self.cmd_rsp_handler
+        self.bglib.ble_rsp_connection_raw_tx += self.cmd_rsp_handler
+        self.bglib.ble_rsp_attclient_find_by_type_value += self.cmd_rsp_handler
+        self.bglib.ble_rsp_attclient_read_by_group_type += self.cmd_rsp_handler
+        self.bglib.ble_rsp_attclient_read_by_type += self.cmd_rsp_handler
+        self.bglib.ble_rsp_attclient_find_information += self.cmd_rsp_handler
+        self.bglib.ble_rsp_attclient_read_by_handle += self.cmd_rsp_handler
+        self.bglib.ble_rsp_attclient_attribute_write += self.cmd_rsp_handler
+        self.bglib.ble_rsp_attclient_write_command += self.cmd_rsp_handler
+        self.bglib.ble_rsp_attclient_indicate_confirm += self.cmd_rsp_handler
+        self.bglib.ble_rsp_attclient_read_long += self.cmd_rsp_handler
+        self.bglib.ble_rsp_attclient_prepare_write += self.cmd_rsp_handler
+        self.bglib.ble_rsp_attclient_execute_write += self.cmd_rsp_handler
+        self.bglib.ble_rsp_attclient_read_multiple += self.cmd_rsp_handler
+        self.bglib.ble_rsp_sm_encrypt_start += self.cmd_rsp_handler
+        self.bglib.ble_rsp_sm_set_bondable_mode += self.cmd_rsp_handler
+        self.bglib.ble_rsp_sm_delete_bonding += self.cmd_rsp_handler
+        self.bglib.ble_rsp_sm_set_parameters += self.cmd_rsp_handler
+        self.bglib.ble_rsp_sm_passkey_entry += self.cmd_rsp_handler
+        self.bglib.ble_rsp_sm_get_bonds += self.cmd_rsp_handler
+        self.bglib.ble_rsp_sm_set_oob_data += self.cmd_rsp_handler
+        self.bglib.ble_rsp_gap_set_privacy_flags += self.cmd_rsp_handler
+        self.bglib.ble_rsp_gap_set_mode += self.cmd_rsp_handler
+        self.bglib.ble_rsp_gap_discover += self.cmd_rsp_handler
+        self.bglib.ble_rsp_gap_connect_direct += self.cmd_rsp_handler
+        self.bglib.ble_rsp_gap_end_procedure += self.cmd_rsp_handler
+        self.bglib.ble_rsp_gap_connect_selective += self.cmd_rsp_handler
+        self.bglib.ble_rsp_gap_set_filtering += self.cmd_rsp_handler
+        self.bglib.ble_rsp_gap_set_scan_parameters += self.cmd_rsp_handler
+        self.bglib.ble_rsp_gap_set_adv_parameters += self.cmd_rsp_handler
+        self.bglib.ble_rsp_gap_set_adv_data += self.cmd_rsp_handler
+        self.bglib.ble_rsp_gap_set_directed_connectable_mode += self.cmd_rsp_handler
+        self.bglib.ble_rsp_hardware_io_port_config_irq += self.cmd_rsp_handler
+        self.bglib.ble_rsp_hardware_set_soft_timer += self.cmd_rsp_handler
+        self.bglib.ble_rsp_hardware_adc_read += self.cmd_rsp_handler
+        self.bglib.ble_rsp_hardware_io_port_config_direction += self.cmd_rsp_handler
+        self.bglib.ble_rsp_hardware_io_port_config_function += self.cmd_rsp_handler
+        self.bglib.ble_rsp_hardware_io_port_config_pull += self.cmd_rsp_handler
+        self.bglib.ble_rsp_hardware_io_port_write += self.cmd_rsp_handler
+        self.bglib.ble_rsp_hardware_io_port_read += self.cmd_rsp_handler
+        self.bglib.ble_rsp_hardware_spi_config += self.cmd_rsp_handler
+        self.bglib.ble_rsp_hardware_spi_transfer += self.cmd_rsp_handler
+        self.bglib.ble_rsp_hardware_i2c_read += self.cmd_rsp_handler
+        self.bglib.ble_rsp_hardware_i2c_write += self.cmd_rsp_handler
+        self.bglib.ble_rsp_hardware_set_txpower += self.cmd_rsp_handler
+        self.bglib.ble_rsp_hardware_timer_comparator += self.cmd_rsp_handler
+        self.bglib.ble_rsp_test_phy_tx += self.cmd_rsp_handler
+        self.bglib.ble_rsp_test_phy_rx += self.cmd_rsp_handler
+        self.bglib.ble_rsp_test_phy_end += self.cmd_rsp_handler
+        self.bglib.ble_rsp_test_phy_reset += self.cmd_rsp_handler
+        self.bglib.ble_rsp_test_get_channel_map += self.cmd_rsp_handler
+        self.bglib.ble_rsp_test_debug += self.cmd_rsp_handler
+
+        self.listener_thread = Thread(name='BLEPythonListener', target=self._listener_thread)
         self.listener_thread.daemon = True
         self.listener_thread.start()
+
+    def cmd_rsp_handler(self, sender, args):
+        self.cmd_rsp_q.put(args)
 
     def connection_status_handler(self, sender, args):
         d = self.find_device(args['address'])
@@ -90,6 +183,14 @@ class Adapter(object):
             if not self.cmd_q.empty():
                 cmd = self.cmd_q.get()
                 self.bglib.send_command(self.serial, cmd)
+
+                # Wait for the response
+                tmp = None
+                while not tmp:
+                    try:
+                        tmp = self.cmd_rsp_q.get(True, timeout=0.01)
+                    except Empty:
+                        self.bglib.check_activity(self.serial)
 
             # Process data packets
             self.bglib.check_activity(self.serial)

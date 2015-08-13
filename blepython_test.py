@@ -46,12 +46,14 @@ for x in adapter.devices:
 
     print ''
     print 'Device Information'
-    print '\tManufacturer Name: %s' % dis.get_manufacturer_name()
-    print '\tDevice Name: %s' % gas.get_device_name()
-    print '\tDevice Appearance: %d' % gas.get_appearance()
-    print '\tModel Number: %s' % dis.get_model_number()
-    print '\tSerial Number: %s' % dis.get_serial_number()
-    print '\tHardware Revision: %s' % dis.get_hardware_revision()
+    if gas:
+        print '\tDevice Name: %s' % gas.get_device_name()
+        print '\tDevice Appearance: %d' % gas.get_appearance()
+    if dis:
+        print '\tManufacturer Name: %s' % dis.get_manufacturer_name()
+        print '\tModel Number: %s' % dis.get_model_number()
+        print '\tSerial Number: %s' % dis.get_serial_number()
+        print '\tHardware Revision: %s' % dis.get_hardware_revision()
     print ''
 
 
