@@ -247,7 +247,10 @@ def parse_scan_response_data(data):
     i = 0
     while (i < len(data)):
         ad_struct_len = data[i]
-        i+=1
+        if ad_struct_len == 0:
+            break
+
+        i += 1
 
         ad_struct_type = data[i]
         ad_struct_data = data[i+1:i+ad_struct_len]
